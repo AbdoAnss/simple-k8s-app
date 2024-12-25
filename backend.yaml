@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+          image: abdoanss/crud-app:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_HOST
+              value: mysql-service
+            - name: MYSQL_DATABASE
+              value: school_db
+            - name: MYSQL_PORT
+              value: "3306"
+          # Startup Probe
+          startupProbe:
+            httpGet:
+              path: /students
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+          # Liveness Probe
+          livenessProbe:
+            httpGet:
+              path: /students   
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          # Readiness Probe
+          readinessProbe:
+            httpGet:
+              path: /students   
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
